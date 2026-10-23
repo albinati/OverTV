@@ -16,7 +16,7 @@
     var log = App.Logger.get('Jogos');
     var feedUrl = '';
     /* Ordem padrão (Brasil 2026: Globo/SporTV têm a F1); ajustável na linha "# f1:" */
-    var f1Channels = ['SPORTV 3', 'SPORTV', 'GLOBO', 'BAND SPORTS', 'BAND', 'SKY SPORTS F1', 'F1 TV'];
+    var f1Channels = ['SPORTV 3', 'SPORTV 2', 'SPORTV', 'GLOBO', 'SKY SPORTS F1', 'F1 TV'];
     var F1_API = 'https://api.jolpi.ca/ergast/f1/current/next.json';   /* calendário público (Ergast/Jolpica) */
     var cache = { at: 0, list: null };
     var f1cache = { at: 0, list: null };
