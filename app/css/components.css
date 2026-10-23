@@ -379,3 +379,23 @@ body.player-active .toast-wrap {
     background-color: transparent !important;
     border-color: transparent !important;
 }
+
+/* ---------------- PIN (controle parental) ---------------- */
+.pin {
+    position: fixed; inset: 0; z-index: 1000;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(4, 8, 24, .82);
+}
+.pin__box {
+    min-width: 32rem; padding: 2.2rem 2.8rem; text-align: center;
+    background: #0d1535; border: 1px solid rgba(90, 230, 255, .35); border-radius: 1rem;
+    box-shadow: 0 0 60px rgba(0, 0, 0, .6);
+}
+.pin__title { font-size: 1.75rem; font-weight: 700; margin-bottom: 1.4rem; }
+.pin__dots  { display: flex; gap: 1.2rem; justify-content: center; margin-bottom: 1.4rem; }
+.pin__dot {
+    width: 1.6rem; height: 1.6rem; border-radius: 50%;
+    border: 2px solid rgba(90, 230, 255, .6); background: transparent;
+}
+.pin__dot.is-on { background: #5ae6ff; box-shadow: 0 0 14px rgba(90, 230, 255, .7); }
+.pin__hint { font-size: 1.05rem; color: var(--text-mute); white-space: pre-line; }

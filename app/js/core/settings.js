@@ -15,6 +15,10 @@
              FULL_SCREEN       : ekrani doldurur, goruntu gerilebilir
              AUTO_ASPECT_RATIO : TV karar verir */
 
+        /* --- Controle parental --- */
+        adultHidden: true,         /* oculta categorias/itens adultos (liberação por PIN na sessão) */
+        adultPinHash: '',          /* hash do PIN de 4 dígitos; vazio = ainda não definido */
+
         preferredFormat: 'ts',     /* canli yayin icin ilk denenecek format: m3u8 | ts
                                       (ts = menor atraso; o HLS deste painel fica ~15 s atras) */
         vodPlayer: 'auto',         /* MKV film/dizi oynaticisi: auto (AVPlay; yalnizca

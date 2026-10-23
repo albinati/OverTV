@@ -94,6 +94,12 @@
                ui/field.js kendi keydown dinleyicisiyle Enter/Back'i yonetir. */
         if (App.UI.Field.isEditing()) { return; }
 
+        /* (a2) Caixa de PIN (controle parental) fica à frente do modal */
+        if (App.UI.Pin && App.UI.Pin.isOpen()) {
+            App.UI.Pin.onKey(code);
+            e.preventDefault();
+            return;
+        }
         /* (b) Modal her seyin onunde */
         if (App.UI.Modal.isOpen()) {
             App.UI.Modal.onKey(code);

@@ -317,6 +317,21 @@
                         'Playlists já salvas não são\n' +
                         'adicionadas de novo; apenas as que faltam são incluídas.' },
 
+                { id: 'adultContent', glyph: '🔞', title: 'Conteúdo adulto',
+                  desc: App.Settings.get('adultHidden') === false
+                        ? 'Filtro desativado: tudo é exibido.'
+                        : (App.Parental.isUnlocked() ? 'Visível até fechar o app.' : 'Oculto (categorias +18).'),
+                  value: App.Settings.get('adultHidden') === false ? 'Sempre visível'
+                         : (App.Parental.isUnlocked() ? 'Visível' : 'Oculto'),
+                  help: 'Oculta as categorias adultas (Adultos, +18, XXX...) em TV ao vivo,\n' +
+                        'Filmes, Séries e na Busca.\n' +
+                        'Mostrar pede o PIN e vale só até fechar o app.\n' +
+                        'Na primeira vez, o app pede para criar o PIN de 4 dígitos.' },
+
+                { id: 'adultPin', glyph: '🔐', title: App.Parental.hasPin() ? 'Alterar PIN' : 'Criar PIN',
+                  desc: App.Parental.hasPin() ? 'PIN definido.' : 'Nenhum PIN ainda.',
+                  help: 'PIN de 4 dígitos digitado com os números do controle.' },
+
                 { id: 'clearSubs', glyph: '💬', title: 'Limpar cache de legendas',
                   desc: (function () {
                       var st = App.SubtitleCache.stats();
@@ -556,6 +571,44 @@
                                 refreshRows(true);
                             });
                         });
+                    return;
+
+                case 'adultContent':
+                    if (App.Settings.get('adultHidden') === false) {
+                        App.Parental.setFilterEnabled(true).then(function () {
+                            App.UI.Toast.info('Conteúdo adulto oculto.');
+                            refreshRows(true);
+                        });
+                        return;
+                    }
+                    App.UI.Modal.choose('Conteúdo adulto', [
+                        { label: App.Parental.isUnlocked() ? 'Ocultar de novo' : 'Mostrar até fechar o app',
+                          value: 'session' },
+                        { label: 'Desativar o filtro (sempre visível)', value: 'off' }
+                    ]).then(function (v) {
+                        if (v === 'session') {
+                            if (App.Parental.isUnlocked()) {
+                                App.Parental.lock();
+                                App.UI.Toast.info('Conteúdo adulto oculto.');
+                                refreshRows(true);
+                                return;
+                            }
+                            return App.Parental.unlock().then(function (ok) {
+                                if (ok) { App.UI.Toast.success('Conteúdo adulto visível nesta sessão.'); }
+                                refreshRows(true);
+                            });
+                        }
+                        if (v === 'off') {
+                            return App.Parental.setFilterEnabled(false).then(function (ok) {
+                                if (ok) { App.UI.Toast.info('Filtro de conteúdo adulto desativado.'); }
+                                refreshRows(true);
+                            });
+                        }
+                    });
+                    return;
+
+                case 'adultPin':
+                    App.Parental.changePin().then(function () { refreshRows(true); });
                     return;
 
                 case 'clearCache':

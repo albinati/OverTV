@@ -404,5 +404,40 @@
         }
     };
 
+    /* ---------------- Controle parental ----------------
+       Envolve os getters para ocultar categorias/itens adultos quando
+       App.Parental.isHidden(). Vale para Xtream e M3U, e também para a
+       Busca, que usa os mesmos getters com ALL_ID. */
+    (function wrapParental() {
+        var P = App.Parental;
+        if (!P) { return; }
+        var o = {
+            liveCats: C.getLiveCategories, live: C.getLiveChannels,
+            movieCats: C.getMovieCategories, movies: C.getMovies,
+            seriesCats: C.getSeriesCategories, series: C.getSeriesList
+        };
+        function cats(type, fn) {
+            return function (force) {
+                return fn(force).then(function (list) {
+                    P.registerCategories(type, list);
+                    return P.filterCategories(list);
+                });
+            };
+        }
+        function items(type, fn, catsFn) {
+            return function (categoryId, force) {
+                return fn(categoryId, force).then(function (list) {
+                    return P.filterItems(type, list, function () { return catsFn(force); });
+                });
+            };
+        }
+        C.getLiveCategories   = cats('live', o.liveCats);
+        C.getMovieCategories  = cats('movie', o.movieCats);
+        C.getSeriesCategories = cats('series', o.seriesCats);
+        C.getLiveChannels = items('live', o.live, o.liveCats);
+        C.getMovies       = items('movie', o.movies, o.movieCats);
+        C.getSeriesList   = items('series', o.series, o.seriesCats);
+    })();
+
     App.Content = C;
 })(window.App = window.App || {});
