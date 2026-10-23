@@ -89,9 +89,10 @@
             r.num.style.display = showNum ? '' : 'none';
             r.num.textContent = showNum ? (item.num || '') : '';
             r.name.textContent = item.name;
-            var chip = App.Quality ? App.Quality.chip(item) : '';
-            r.q.textContent = chip;
-            r.q.style.display = chip ? '' : 'none';
+            /* sem chip de qualidade na lista: a variante aparece só no painel
+               lateral e no OSD do player (pedido do usuário) */
+            r.q.textContent = '';
+            r.q.style.display = 'none';
 
             /* Bellekte XMLTV varsa satirda da program adini goster (ag istegi yok) */
             var nn = App.EPG.fromIndex(item.epgChannelId);

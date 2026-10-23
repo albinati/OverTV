@@ -7,3 +7,5 @@ Casa | http://SERVIDOR:PORTA | USUARIO | SENHA
 
 # Painel do provedor (opcional): habilita "Verificar servidor" e "Trocar de servidor".
 # painel: http://SEU-PAINEL/api.php
+# Agenda de jogos (opcional): feed JSON do provedor para a tela "Jogos de hoje".
+# jogos: https://SEU-FEED/jogos.json

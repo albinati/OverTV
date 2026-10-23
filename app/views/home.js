@@ -21,6 +21,7 @@
 
         var DEFS = [
             { id: 'live', title: 'TV ao vivo', desc: 'Canais e guia de programação', glyph: '📡', view: 'live' },
+            { id: 'jogos', title: 'Jogos de hoje', desc: 'Agenda de futebol com o canal que transmite', glyph: '⚽', view: 'jogos' },
             { id: 'movies', title: 'Filmes', desc: 'Acervo de filmes', glyph: '🎬', view: 'movies' },
             { id: 'series', title: 'Séries', desc: 'Temporadas e episódios', glyph: '📺', view: 'series' },
             { id: 'favorites', title: 'Favoritos', desc: 'Seus itens salvos', glyph: '⭐', view: 'favorites' },

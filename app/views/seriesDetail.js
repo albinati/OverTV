@@ -39,7 +39,8 @@
             if (item.durationSecs) { sub.push(U.duration(item.durationSecs)); }
             else if (item.duration) { sub.push(item.duration); }
             var prog = App.History.progressOf(item.key);
-            if (prog > 0.02) { sub.push('%' + Math.round(prog * 100) + ' assistido'); }
+            if (prog >= 0.9) { sub.push('✓ Assistido'); }
+            else if (prog > 0.02) { sub.push(Math.round(prog * 100) + '% assistido'); }
             if (item.plot) { sub.push(U.truncate(item.plot, 90)); }
             texts.appendChild(U.el('div', 'ch__epg', sub.join('  •  ')));
 
@@ -147,6 +148,45 @@
             epList.refreshIndex(epList.getIndex());
         }
 
+        /**
+         * "Continuar série": vai para o episódio desta série visto por último
+         * (ou o seguinte, se aquele já foi concluído). Usa o histórico local.
+         * @param {boolean} announce  mostra aviso quando não há histórico
+         */
+        function focusLastWatched(announce) {
+            if (!info || !epList) { return; }
+            var hist = App.History.list('episode');
+            var last = null;
+            for (var h = 0; h < hist.length; h++) {
+                var it = hist[h];
+                var sameSeries = (it.seriesId && String(it.seriesId) === String(seriesItem.id)) ||
+                                 (!it.seriesId && it.seriesName && it.seriesName === seriesItem.name);
+                if (sameSeries && (!last || (it.watchedAt || 0) > (last.watchedAt || 0))) { last = it; }
+            }
+            if (!last) {
+                if (announce) { App.UI.Toast.info('Nenhum episódio desta série no histórico.'); }
+                return;
+            }
+            var all = allEpisodes();
+            var idx = -1;
+            for (var i = 0; i < all.length; i++) { if (all[i].key === last.key) { idx = i; break; } }
+            if (idx < 0) { return; }
+            /* concluído -> propõe o próximo episódio */
+            if (App.History.progressOf(last.key) >= 0.9 && idx + 1 < all.length) { idx++; }
+            var target = all[idx];
+            for (var s = 0; s < info.seasons.length; s++) {
+                var eps = info.seasons[s].episodes;
+                for (var e = 0; e < eps.length; e++) {
+                    if (eps[e].key === target.key) {
+                        selectSeason(s);
+                        epList.setItems(eps, { index: e });
+                        if (announce) { App.UI.Toast.info('Continuar: ' + target.name); }
+                        return;
+                    }
+                }
+            }
+        }
+
         function fillHeader() {
             var meta = [];
             if (info.releaseDate) { meta.push(String(info.releaseDate).substr(0, 4)); }
@@ -204,6 +244,7 @@
                 var hints = U.el('div', 'hintbar');
                 hints.innerHTML =
                     '<span class="hint"><span class="hint__key">OK</span> Reproduzir episódio</span>' +
+                    '<span class="hint"><span class="hint__key">VERDE</span> Continuar série</span>' +
                     '<span class="hint"><span class="hint__key">AMARELO</span> Favorito</span>' +
                     '<span class="hint"><span class="hint__key">RETURN</span> Voltar</span>';
                 root.appendChild(hints);
@@ -257,6 +298,7 @@
 
                     buildSeasons();
                     selectSeason(0);
+                    focusLastWatched(false);
                     App.Nav.focus(epHost);
                     epList.setActive(true);
                 }, function (err) {
@@ -274,6 +316,7 @@
 
             onKey: function (code) {
                 if (code === KEY.YELLOW) { toggleFav(); return true; }
+                if (code === KEY.GREEN) { focusLastWatched(true); App.Nav.focus(epHost); return true; }
                 /* Renkli tuslarla hizli sezon degistirme */
                 if (code === KEY.CH_UP && info) {
                     selectSeason(Math.max(0, seasonIndex - 1));

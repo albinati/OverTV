@@ -98,6 +98,17 @@
                 rep.quality = best.label;
                 out.push(rep);
             }
+            /* Numeração contínua (1..N) na lista agrupada: os números do
+               servidor ficam com buracos depois de unir as variantes. Itens
+               não agrupados são copiados para não alterar o cache. */
+            for (i = 0; i < out.length; i++) {
+                if (!out[i].variants) {
+                    var c = {};
+                    for (var f2 in out[i]) { if (Object.prototype.hasOwnProperty.call(out[i], f2)) { c[f2] = out[i][f2]; } }
+                    out[i] = c;
+                }
+                out[i].num = i + 1;
+            }
             return out;
         },
 
