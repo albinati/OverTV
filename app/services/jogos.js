@@ -15,21 +15,31 @@
 
     var log = App.Logger.get('Jogos');
     var feedUrl = '';
+    var f1Channels = ['GRANDE PREMIO F1 TV', 'F1 TV', 'BAND SPORTS', 'BAND', 'SKY SPORTS F1'];
+    var F1_API = 'https://api.jolpi.ca/ergast/f1/current/next.json';   /* calendário público (Ergast/Jolpica) */
     var cache = { at: 0, list: null };
+    var f1cache = { at: 0, list: null };
     var TTL = 2 * 60 * 1000;
 
-    (function loadFeedFromFile() {
+    (function loadConfigFromFile() {
         try {
             var xhr = new XMLHttpRequest();
             xhr.open('GET', 'hesaplar.txt', true);
             xhr.onload = function () {
                 if (xhr.status !== 0 && (xhr.status < 200 || xhr.status >= 300)) { return; }
-                var m = /^\s*#\s*jogos\s*[:|]\s*(\S+)/im.exec(xhr.responseText || '');
+                var t = xhr.responseText || '';
+                var m = /^\s*#\s*jogos\s*[:|]\s*(\S+)/im.exec(t);
                 if (m) { feedUrl = m[1]; log.info('feed de jogos configurado pelo hesaplar.txt'); }
+                var f = /^\s*#\s*f1\s*[:|]\s*(.+)$/im.exec(t);
+                if (f) { f1Channels = f[1].split(',').map(function (s) { return s.trim(); }).filter(Boolean); }
             };
             xhr.send();
         } catch (e) { /* sem arquivo */ }
     })();
+
+    /* Competições europeias e internacionais (o resto é "outros") */
+    var EUROPE = /ingl|premier|espanh|la liga|italian|alem|bundesliga|franc|ligue|portug|holand|eredivisie|belga|escoc|turco|grego|champions|europa league|conference|liga das na|eurocopa|euro |copa do mundo|mundial|supercopa|uefa/i;
+    function region(comp) { return EUROPE.test(String(comp || '')) ? 'europe' : 'other'; }
 
     function norm(s) {
         return String(s || '').toLowerCase()
@@ -59,6 +69,7 @@
             if (n) { canais.push(String(n)); }
         }
         return {
+            kind: 'futebol', region: region(j.competicao || j.liga || ''),
             time1: t1, time2: t2, competicao: j.competicao || j.liga || '', horario: j.horario || j.hora || '',
             placar: (j.placar_time1 !== '' && j.placar_time1 !== undefined && j.placar_time1 !== null) ? (j.placar_time1 + ' x ' + j.placar_time2) : '',
             status: st, canais: canais, logo1: j.img_time1_url || '', logo2: j.img_time2_url || '',
@@ -106,6 +117,54 @@
     App.Jogos = {
         isConfigured: function () { return !!feedUrl; },
 
+        /**
+         * Próximo fim de semana de Fórmula 1 (calendário público), como itens
+         * no mesmo formato dos jogos: {kind:'f1', name, competicao, when(Date),
+         * horario, status, canais}. Sessões já encerradas há mais de 3 h saem.
+         */
+        f1: function (force) {
+            if (!force && f1cache.list && Date.now() - f1cache.at < 30 * 60 * 1000) { return Promise.resolve(f1cache.list); }
+            return App.Http.getJson(F1_API, { timeout: 15000 }).then(function (d) {
+                var races = (d && d.MRData && d.MRData.RaceTable && d.MRData.RaceTable.Races) || [];
+                var out = [];
+                if (!races.length) { f1cache = { at: Date.now(), list: out }; return out; }
+                var r = races[0];
+                var gp = String(r.raceName || '').replace(/Grand Prix/i, 'GP');
+                var sessions = [
+                    ['FirstPractice', 'Treino livre 1'], ['SecondPractice', 'Treino livre 2'], ['ThirdPractice', 'Treino livre 3'],
+                    ['SprintQualifying', 'Classificação sprint'], ['Sprint', 'Sprint'], ['Qualifying', 'Classificação']
+                ];
+                function add(label, dateStr, timeStr, isRace) {
+                    if (!dateStr) { return; }
+                    var when = new Date(dateStr + 'T' + (timeStr || '12:00:00Z'));
+                    if (isNaN(when.getTime())) { return; }
+                    var now = Date.now();
+                    if (when.getTime() + 3 * 3600 * 1000 < now) { return; }           /* já acabou */
+                    var live = now >= when.getTime() && now < when.getTime() + 2 * 3600 * 1000;
+                    var dd = when.getDate(), mm = when.getMonth() + 1;
+                    var days = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+                    var sameDay = new Date().toDateString() === when.toDateString();
+                    var hh = ('0' + when.getHours()).slice(-2) + ':' + ('0' + when.getMinutes()).slice(-2);
+                    out.push({
+                        kind: 'f1', region: 'europe', when: when,
+                        time1: 'F1 · ' + gp, time2: label, name: 'F1 ' + gp + ' - ' + label,
+                        competicao: r.Circuit && r.Circuit.circuitName ? r.Circuit.circuitName : 'Fórmula 1',
+                        horario: (sameDay ? 'hoje ' : (days[when.getDay()] + ' ' + dd + '/' + mm + ' ')) + hh,
+                        placar: '', canais: f1Channels.slice(),
+                        status: live ? { text: 'AO VIVO', order: 1, live: true } : { text: isRace ? 'CORRIDA' : 'AGENDADO', order: 2 }
+                    });
+                }
+                for (var i = 0; i < sessions.length; i++) {
+                    var s = r[sessions[i][0]];
+                    if (s) { add(sessions[i][1], s.date, s.time, false); }
+                }
+                add('Corrida', r.date, r.time, true);
+                out.sort(function (a, b) { return a.when - b.when; });
+                f1cache = { at: Date.now(), list: out };
+                return out;
+            });
+        },
+
         /** @returns {Promise<Array>} jogos normalizados, ordenados por status e horário */
         list: function (force) {
             if (!feedUrl) { return Promise.reject(new App.AppError(App.ERR.UNSUPPORTED, 'feed de jogos não configurado')); }
@@ -135,9 +194,10 @@
                 for (var g = 0; g < games.length; g++) {
                     var j = games[g];
                     j.channel = null; j.channelName = '';
-                    for (var c = 0; c < j.canais.length && !j.channel; c++) {
-                        var ch = findChannel(idx, j.canais[c]);
-                        if (ch) { j.channel = ch; j.channelName = j.canais[c]; }
+                    var cands = (j.kind === 'f1') ? f1Channels : j.canais;
+                    for (var c = 0; c < cands.length && !j.channel; c++) {
+                        var ch = findChannel(idx, cands[c]);
+                        if (ch) { j.channel = ch; j.channelName = cands[c]; }
                     }
                     j.channels = channels || [];
                 }

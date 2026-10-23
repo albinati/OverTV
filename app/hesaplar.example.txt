@@ -9,3 +9,5 @@ Casa | http://SERVIDOR:PORTA | USUARIO | SENHA
 # painel: http://SEU-PAINEL/api.php
 # Agenda de jogos (opcional): feed JSON do provedor para a tela "Jogos de hoje".
 # jogos: https://SEU-FEED/jogos.json
+# Canais preferidos para a Fórmula 1 (opcional, em ordem): 
+# f1: GRANDE PREMIO F1 TV, BAND SPORTS, BAND
