@@ -30,6 +30,13 @@
         { value: 'm3u8', label: 'HLS (.m3u8)' },
         { value: 'ts', label: 'MPEG-TS (.ts)' }
     ];
+    var QUALITIES = [
+        { value: 'auto', label: 'Automática (FHD H264 → HD → 4K → SD)' },
+        { value: 'FHD',  label: 'Full HD' },
+        { value: 'HD',   label: 'HD' },
+        { value: '4K',   label: '4K / UHD' },
+        { value: 'SD',   label: 'SD' }
+    ];
     var VOD_PLAYERS = [
         { value: 'auto', label: 'Automático (recomendado)' },
         { value: 'mse', label: 'Player do app' }
@@ -185,6 +192,22 @@
                         'Preencher a tela: a imagem é esticada, sem faixas.\n' +
                         'Corresponde à chamada de API setDisplayMethod() do AVPlay.' },
 
+                { id: 'groupQualities', glyph: '🧩', title: 'Agrupar qualidades do mesmo canal',
+                  desc: 'UHD, FHD, HD e SD viram um canal só, com troca pela tecla AMARELA.',
+                  value: App.Settings.get('groupQualities') !== false ? 'Ligado' : 'Desligado',
+                  help: 'As variantes de um canal (ex.: SPORTV 3 UHD / FHD H264 / HD) aparecem\n' +
+                        'como um único item. O app toca a qualidade preferida e, se ela falhar,\n' +
+                        'troca sozinho para a próxima. No player, AMARELO escolhe a qualidade.\n' +
+                        'Favoritos e histórico continuam valendo para o canal agrupado.' },
+
+                { id: 'preferredQuality', glyph: '🎯', title: 'Qualidade preferida ao vivo',
+                  desc: 'Qual variante tocar primeiro num canal agrupado.',
+                  value: labelOf(QUALITIES, App.Settings.get('preferredQuality') || 'auto'),
+                  help: 'Automática: Full HD em H.264 primeiro (decodificação mais leve e estável\n' +
+                        'no player da TV), depois HD, 4K e SD. O atraso em relação ao ao vivo é\n' +
+                        'definido no servidor e não dá para medir na TV; FHD H264 costuma ser a\n' +
+                        'variante mais estável para esportes.' },
+
                 { id: 'preferredFormat', glyph: '📶', title: 'Formato de transmissão preferido',
                   desc: 'Formato tentado primeiro nas transmissões ao vivo.',
                   value: labelOf(FORMATS, s.preferredFormat),
@@ -316,6 +339,17 @@
                   help: 'Lê o arquivo de backup encontrado no USB ou na pasta Downloads.\n' +
                         'Playlists já salvas não são\n' +
                         'adicionadas de novo; apenas as que faltam são incluídas.' },
+
+                { id: 'hubCheck', glyph: '🛰', title: 'Verificar servidor (painel)',
+                  desc: (function () { var p = App.Profile.get(); return p && p.host ? 'Atual: ' + p.host.replace(/^https?:\/\//, '') : 'Sem conta Xtream ativa.'; })(),
+                  help: 'Pergunta ao painel do provedor qual servidor a sua conta deve usar.\n' +
+                        'Se for diferente do configurado, o app oferece atualizar a conta.\n' +
+                        'Usuário e senha são enviados ao painel nessa consulta.' },
+
+                { id: 'hubMigrate', glyph: '🔁', title: 'Trocar de servidor (migração)',
+                  desc: 'Lista os servidores do painel e migra a conta.',
+                  help: 'Migração entre servidores não consome créditos (texto do próprio painel).\n' +
+                        'Nada é feito sem a sua confirmação na tela.' },
 
                 { id: 'adultContent', glyph: '🔞', title: 'Conteúdo adulto',
                   desc: App.Settings.get('adultHidden') === false
@@ -459,6 +493,18 @@
                     refreshRows(true);
                     return;
 
+                case 'groupQualities':
+                    var gq = App.Settings.toggle('groupQualities');
+                    App.UI.Toast.info('Agrupar qualidades: ' + (gq ? 'Ligado' : 'Desligado'));
+                    refreshRows(true);
+                    return;
+
+                case 'preferredQuality':
+                    var pq = App.Settings.cycle('preferredQuality', QUALITIES);
+                    App.UI.Toast.info('Qualidade preferida: ' + pq.label);
+                    refreshRows(true);
+                    return;
+
                 case 'preferredFormat':
                     var fm = App.Settings.cycle('preferredFormat', FORMATS);
                     App.UI.Toast.info('Formato de transmissão: ' + fm.label);
@@ -571,6 +617,85 @@
                                 refreshRows(true);
                             });
                         });
+                    return;
+
+                case 'hubCheck':
+                    (function () {
+                        var p = App.Profile.get();
+                        if (!p || p.type !== 'xtream') { App.UI.Toast.error('Ative uma conta Xtream primeiro.'); return; }
+                        App.UI.Loading.show('Consultando o painel...', { delay: 0 });
+                        App.Hub.identify().then(function (dns) {
+                            App.UI.Loading.hide();
+                            var same = dns.url.replace(/^https?:\/\//, '') === String(p.host).replace(/^https?:\/\//, '');
+                            if (same) {
+                                App.UI.Modal.alert('Servidor confirmado',
+                                    'O painel indica ' + dns.name + ' (' + dns.url + '), que é o servidor já configurado.');
+                                return;
+                            }
+                            return App.UI.Modal.confirm('Servidor diferente',
+                                'O painel indica ' + dns.name + ' (' + dns.url + ').\nConfigurado: ' + p.host +
+                                '\n\nAtualizar a conta para o servidor indicado?', { okText: 'Atualizar' })
+                                .then(function (yes) {
+                                    if (!yes) { return; }
+                                    App.UI.Loading.show('Atualizando conta...', { delay: 0 });
+                                    return App.Hub.applyServer({ host: dns.url }, function (t) { App.UI.Loading.setProgress(t); })
+                                        .then(function () {
+                                            App.UI.Loading.hide();
+                                            App.UI.Toast.success('Conta atualizada para ' + dns.name + '.');
+                                            refreshRows(true);
+                                        });
+                                });
+                        }).catch(function (err) {
+                            App.UI.Loading.hide();
+                            App.UI.Modal.alert('Painel', App.AppError.wrap(err).detail || 'Não foi possível consultar o painel.');
+                        });
+                    })();
+                    return;
+
+                case 'hubMigrate':
+                    (function () {
+                        var p = App.Profile.get();
+                        if (!p || p.type !== 'xtream') { App.UI.Toast.error('Ative uma conta Xtream primeiro.'); return; }
+                        App.UI.Loading.show('Consultando servidores...', { delay: 0 });
+                        App.Hub.servers().then(function (info) {
+                            App.UI.Loading.hide();
+                            var opts = info.servers.filter(function (s) { return s.active && s.id !== info.currentId; })
+                                .map(function (s) {
+                                    return { label: s.name + (s.online === true ? ' · online' : (s.online === false ? ' · offline' : '')), value: s.id };
+                                });
+                            if (!opts.length) {
+                                App.UI.Modal.alert('Trocar de servidor', 'Servidor atual: ' + (info.currentName || '?') +
+                                    '\nNenhum outro servidor disponível para esta conta.');
+                                return;
+                            }
+                            return App.UI.Modal.choose('Trocar de servidor', opts,
+                                { message: 'Servidor atual: ' + (info.currentName || '?') + '. Escolha o destino:' })
+                                .then(function (id) {
+                                    if (!id) { return; }
+                                    var name = '';
+                                    for (var i = 0; i < info.servers.length; i++) { if (info.servers[i].id === id) { name = info.servers[i].name; } }
+                                    return App.UI.Modal.confirm('Confirmar migração',
+                                        'Migrar a conta de "' + info.currentName + '" para "' + name + '"?\n' +
+                                        'A troca é feita no painel do provedor e pode levar até 2 minutos.',
+                                        { okText: 'Migrar', danger: true }).then(function (yes) {
+                                        if (!yes) { return; }
+                                        App.UI.Loading.show('Migrando para ' + name + '...', { delay: 0 });
+                                        return App.Hub.migrate(id).then(function (srv) {
+                                            App.UI.Loading.setProgress('Aplicando novo servidor...');
+                                            return App.Hub.applyServer(srv, function (t) { App.UI.Loading.setProgress(t); })
+                                                .then(function () {
+                                                    App.UI.Loading.hide();
+                                                    App.UI.Toast.success('Migrado para ' + (srv.name || name) + '.');
+                                                    refreshRows(true);
+                                                });
+                                        });
+                                    });
+                                });
+                        }).catch(function (err) {
+                            App.UI.Loading.hide();
+                            App.UI.Modal.alert('Migração', App.AppError.wrap(err).detail || 'Não foi possível concluir a migração.');
+                        });
+                    })();
                     return;
 
                 case 'adultContent':

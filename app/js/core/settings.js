@@ -15,6 +15,16 @@
              FULL_SCREEN       : ekrani doldurur, goruntu gerilebilir
              AUTO_ASPECT_RATIO : TV karar verir */
 
+        /* --- Qualidades ao vivo --- */
+        groupQualities: true,      /* une UHD/FHD/HD/SD do mesmo canal num só item */
+        preferredQuality: 'auto',  /* auto | 4K | FHD | HD | SD (auto = FHD H264 > HD > 4K > SD) */
+
+        /* --- Painel do provedor (opcional) ---
+           O endereço NÃO fica no código: vem da linha "# painel: URL" do
+           hesaplar.txt (arquivo fora do repositório). */
+        hubEnabled: true,
+        hubPanel: '',
+
         /* --- Controle parental --- */
         adultHidden: true,         /* oculta categorias/itens adultos (liberação por PIN na sessão) */
         adultPinHash: '',          /* hash do PIN de 4 dígitos; vazio = ainda não definido */

@@ -439,5 +439,18 @@
         C.getSeriesList   = items('series', o.series, o.seriesCats);
     })();
 
+    /* ---------------- Qualidades agrupadas ----------------
+       Depois do filtro parental: une as variantes UHD/FHD/HD/SD do mesmo
+       canal (js/core/quality.js). Vale para a lista e para a Busca. */
+    (function wrapQuality() {
+        if (!App.Quality) { return; }
+        var orig = C.getLiveChannels;
+        C.getLiveChannels = function (categoryId, force) {
+            return orig(categoryId, force).then(function (list) {
+                return App.Quality.enabled() ? App.Quality.group(list) : list;
+            });
+        };
+    })();
+
     App.Content = C;
 })(window.App = window.App || {});

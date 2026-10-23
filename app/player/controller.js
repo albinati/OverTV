@@ -510,12 +510,40 @@
     /**
      * Hata sonrasi kurtarma stratejisi.
      */
+    var triedVariants = {};   /* ids de variantes já tentadas nesta reprodução */
+
+    /** Próxima variante de qualidade ainda não tentada (ordem de preferência). */
+    function nextVariant(item) {
+        if (!item || !item.variants) { return null; }
+        for (var i = 0; i < item.variants.length; i++) {
+            if (!triedVariants[String(item.variants[i].id)]) { return item.variants[i]; }
+        }
+        return null;
+    }
+
     function recover(err) {
         if (!current) { setState(STATE.ERROR); return; }
 
         var item = current.item;
         var gen = streamGen;
         log.warn('kurtarma denemesi', 'attempt=' + attempt, 'triedAlt=' + triedAlt, err.detail);
+
+        /* 0) Canal agrupado: tenta outra variante de qualidade antes de tudo */
+        if (current.isLive && item.variants) {
+            var nv = nextVariant(item);
+            if (nv) {
+                var vItem = App.Quality.withVariant(item, nv.id);
+                var vUrl = App.Content.streamUrl(vItem);
+                if (vUrl) {
+                    log.info('trocando variante de qualidade:', nv.label);
+                    App.Bus.emit('player:recovering', { reason: 'quality', label: nv.label });
+                    setTimeout(function () {
+                        if (gen === streamGen && current) { triedAlt = false; startStream(vItem, vUrl, true); }
+                    }, 400);
+                    return;
+                }
+            }
+        }
 
         /* 1) Canli yayin + Xtream: alternatif format dene (.m3u8 <-> .ts) */
         if (!triedAlt && current.isLive) {
@@ -578,7 +606,8 @@
         var gen = ++streamGen;
 
         current = { item: item, url: url, isLive: isLive };
-        if (!isRetry) { attempt = 0; triedAlt = false; lastError = null; }
+        if (!isRetry) { attempt = 0; triedAlt = false; lastError = null; triedVariants = {}; }
+        triedVariants[String(item.id)] = true;
 
         position = 0;
         duration = 0;
@@ -920,6 +949,17 @@
         getState: function () { return state; },
         isPlaying: function () { return state === STATE.PLAYING || state === STATE.BUFFERING; },
         getItem: function () { return current ? current.item : null; },
+
+        /** Variantes de qualidade do canal atual (canal agrupado) */
+        getVariants: function () { return (current && current.item && current.item.variants) || []; },
+        /** Troca manual de variante; reinicia a transmissão com a nova */
+        setVariant: function (variantId) {
+            if (!current || !current.item || !current.item.variants) { return Promise.resolve(false); }
+            var vItem = App.Quality.withVariant(current.item, variantId);
+            var url = App.Content.streamUrl(vItem);
+            if (!url) { return Promise.resolve(false); }
+            return startStream(vItem, url, false);
+        },
         getUrl: function () { return current ? current.url : ''; },
         getPosition: function () { return position; },
         /** Sarma hesabi icin oynaticinin anlik konumu (bkz. livePosition) */

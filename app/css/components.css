@@ -399,3 +399,12 @@ body.player-active .toast-wrap {
 }
 .pin__dot.is-on { background: #5ae6ff; box-shadow: 0 0 14px rgba(90, 230, 255, .7); }
 .pin__hint { font-size: 1.05rem; color: var(--text-mute); white-space: pre-line; }
+
+/* chip de qualidade na lista de canais (canal agrupado) */
+.ch__q {
+    flex: 0 0 auto; margin: 0 .6rem;
+    font-size: 1rem; font-weight: 700; letter-spacing: .03em;
+    color: #9fe9ff; background: rgba(90, 230, 255, .14);
+    border: 1px solid rgba(90, 230, 255, .35); border-radius: .4rem;
+    padding: .1rem .45rem; white-space: nowrap;
+}

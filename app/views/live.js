@@ -70,11 +70,13 @@
                 num: U.el('span', 'ch__num'),
                 logo: U.el('div', 'ch__logo'),
                 name: U.el('div', 'ch__name'),
+                q: U.el('span', 'ch__q'),
                 epg: U.el('div', 'ch__epg'),
                 fav: U.el('span', 'ch__fav')
             };
             texts.appendChild(r.name);
             texts.appendChild(r.epg);
+            node.appendChild(r.q);
             node.appendChild(r.num);
             node.appendChild(r.logo);
             node.appendChild(texts);
@@ -87,6 +89,9 @@
             r.num.style.display = showNum ? '' : 'none';
             r.num.textContent = showNum ? (item.num || '') : '';
             r.name.textContent = item.name;
+            var chip = App.Quality ? App.Quality.chip(item) : '';
+            r.q.textContent = chip;
+            r.q.style.display = chip ? '' : 'none';
 
             /* Bellekte XMLTV varsa satirda da program adini goster (ag istegi yok) */
             var nn = App.EPG.fromIndex(item.epgChannelId);
@@ -109,6 +114,12 @@
             App.UI.ImageLoader.into(logoBox, item.logo, U.initials(item.name));
 
             sideEl.appendChild(U.el('div', 'side__name', item.name));
+            if (item.variants && item.variants.length > 1) {
+                var labels = [];
+                for (var vi = 0; vi < item.variants.length; vi++) { labels.push(item.variants[vi].label); }
+                sideEl.appendChild(U.el('div', 'side__cat', 'Qualidades: ' + labels.join('  ·  ') +
+                    '   (toca em ' + item.quality + ')'));
+            }
 
             var catName = '';
             for (var i = 0; i < categories.length; i++) {

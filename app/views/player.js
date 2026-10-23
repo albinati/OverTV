@@ -137,7 +137,7 @@
                 '<span class="hint"><span class="hint__key">◀ ▶</span> Avançar/Voltar</span>' +
                 '<span class="hint"><span class="hint__key">VERMELHO</span> Favorito</span>' +
                 '<span class="hint"><span class="hint__key">VERDE</span> Áudio</span>' +
-                '<span class="hint"><span class="hint__key">AMARELO</span> Legenda</span>' +
+                '<span class="hint"><span class="hint__key">AMARELO</span> Qualidade / Legenda</span>' +
                 '<span class="hint"><span class="hint__key">AZUL</span> Reiniciar</span>';
             bottom.appendChild(hints);
 
@@ -184,7 +184,11 @@
             elNext.textContent = '';
 
             U.empty(elBadges);
-            if (isLive) { elBadges.appendChild(U.el('span', 'badge badge--live', 'CANLI')); }
+            if (isLive) { elBadges.appendChild(U.el('span', 'badge badge--live', 'AO VIVO')); }
+            if (isLive && item.quality) {
+                elBadges.appendChild(U.el('span', 'badge badge--ok', item.quality +
+                    (item.variants && item.variants.length > 1 ? '  ·  AMARELO troca' : '')));
+            }
             /* Dosya turu (MKV, MP4, AVI...): sarma sorunlarinin cogu
                dosya turune baglidir, ariza bildirirken isimize yarar */
             if (!isLive && item.containerExtension) {
@@ -762,6 +766,7 @@
         function onRecovering(d) {
             if (destroyed) { return; }
             showBuffering(d.reason === 'format' ? 'Tentando formato alternativo de transmissão...'
+                        : d.reason === 'quality' ? ('Trocando para ' + (d.label || 'outra qualidade') + '...')
                         : d.reason === 'seek' ? 'Reabrindo transmissão...'
                         : 'Restabelecendo conexão...');
         }
@@ -811,6 +816,28 @@
             App.UI.Toast.info(on ? '★ Adicionado aos favoritos' : 'Removido dos favoritos');
             fillItemInfo(item);
             showOsd();
+        }
+
+        /* Canal agrupado: escolher a variante de qualidade (UHD/FHD/HD/SD) */
+        function chooseQuality() {
+            var vars = App.Player.getVariants();
+            var item = App.Player.getItem();
+            if (!vars.length || !item) { return; }
+            var opts = [], def = 0;
+            for (var i = 0; i < vars.length; i++) {
+                var isCur = String(vars[i].id) === String(item.id);
+                if (isCur) { def = i; }
+                opts.push({ icon: isCur ? '✔' : '📺', label: vars[i].label, hint: isCur ? 'TOCANDO' : '', value: vars[i].id });
+            }
+            App.UI.Modal.choose('Qualidade', opts, {
+                message: 'Variantes deste canal no servidor. Se uma falhar, o app troca sozinho.',
+                defaultIndex: def
+            }).then(function (id) {
+                if (id === undefined || String(id) === String(item.id)) { return; }
+                App.UI.Toast.info('Trocando qualidade...');
+                showBuffering('Trocando qualidade...');
+                App.Player.setVariant(id);
+            });
         }
 
         function chooseAudioTrack() {
@@ -1485,7 +1512,8 @@
                         return true;
 
                     case KEY.YELLOW:
-                        chooseSubtitle();
+                        if (App.Player.isLive() && App.Player.getVariants().length > 1) { chooseQuality(); }
+                        else { chooseSubtitle(); }
                         return true;
 
                     case KEY.BLUE:

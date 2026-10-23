@@ -20,7 +20,8 @@ rm -f app/*.wgt app/.manifest.tmp
 docker image inspect tizen-cli >/dev/null 2>&1 || docker build --platform linux/amd64 -t tizen-cli tools/tizen-docker
 rm -rf .deploy && mkdir .deploy && cp IPTVPlayer.wgt certs/samsung/device-profile.xml .deploy/ && chmod -R 777 .deploy
 docker run --rm --platform linux/amd64 --network host -v "$PWD/.deploy:/d" tizen-cli bash -c "
-  sdb connect $TV_IP:26101 >/dev/null; sleep 1
+  sdb kill-server >/dev/null 2>&1; sdb connect $TV_IP:26101 >/dev/null; sleep 2
+  sdb devices | grep -q "$TV_IP" || { echo 'TV não conectou via sdb (Developer Mode ligado? IP certo?)'; exit 1; }
   sdb push /d/device-profile.xml /home/owner/share/tmp/sdk_tools/ 2>&1 | grep -v WARNING
   sdb push /d/IPTVPlayer.wgt /home/owner/share/tmp/sdk_tools/tmp/app.wgt 2>&1 | grep -v WARNING
   sdb shell 0 vd_appinstall $APP_ID /home/owner/share/tmp/sdk_tools/tmp/app.wgt 2>&1 | grep -E 'fail|reason|completed'

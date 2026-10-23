@@ -220,6 +220,35 @@
     /* ============================================================
        4) ACILIS AKISI
        ============================================================ */
+    /* Atualização "a quente" do servidor: na abertura, pergunta ao painel do
+       provedor qual servidor a conta deve usar. Só fala com o usuário se for
+       diferente do configurado; qualquer erro é silencioso (log). */
+    function checkHubServer() {
+        if (!App.Hub || !App.Hub.isConfigured()) { return; }
+        var p = App.Profile.get();
+        if (!p || p.type !== 'xtream') { return; }
+        App.Hub.identify().then(function (dns) {
+            var same = dns.url.replace(/^https?:\/\//, '') === String(p.host || '').replace(/^https?:\/\//, '');
+            if (same) { return; }
+            return App.UI.Modal.confirm('Servidor atualizado no painel',
+                'O painel do provedor indica o servidor ' + dns.name + ' (' + dns.url + ') para a sua conta.\n' +
+                'Configurado agora: ' + p.host + '\n\nAtualizar a conta para o servidor indicado?',
+                { okText: 'Atualizar', defaultIndex: 0 }).then(function (yes) {
+                if (!yes) { return; }
+                App.UI.Loading.show('Atualizando servidor...', { delay: 0 });
+                return App.Hub.applyServer({ host: dns.url }, function (t) { App.UI.Loading.setProgress(t); })
+                    .then(function () {
+                        App.UI.Loading.hide(true);
+                        App.UI.Toast.success('Conta atualizada para ' + dns.name + '.');
+                        App.Router.reset(App.Settings.get('startupView') === 'live' ? 'live' : 'home');
+                    });
+            });
+        }).catch(function (e) {
+            App.UI.Loading.hide(true);
+            log.warn('verificação do painel falhou:', App.AppError.wrap(e).detail);
+        });
+    }
+
     function start() {
         /* Once proje klasorundeki hesaplar.txt okunur. Dosya her build'e
            girdigi icin, Tizen yeniden kurulumda kayitli playlistleri
@@ -252,6 +281,7 @@
             if (App.Content.sourceType() === 'xtream') {
                 App.Xtream.login().then(function (res) {
                     App.Profile.setUserInfo(res.userInfo);
+                    checkHubServer();
                     if (res.userInfo.daysLeft !== null && res.userInfo.daysLeft <= 3) {
                         App.UI.Toast.warn('Sua conta expira em ' +
                             res.userInfo.daysLeft + ' dia(s)', 6000);

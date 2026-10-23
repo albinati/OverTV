@@ -4,3 +4,6 @@
 # Lista M3U:
 #   m3u | Nome | http://.../lista.m3u
 Casa | http://SERVIDOR:PORTA | USUARIO | SENHA
+
+# Painel do provedor (opcional): habilita "Verificar servidor" e "Trocar de servidor".
+# painel: http://SEU-PAINEL/api.php
