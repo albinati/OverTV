@@ -205,7 +205,7 @@
        ============================================================ */
     function registerViews() {
         var names = ['login', 'playlists', 'home', 'live', 'movies', 'series', 'seriesDetail',
-                     'favorites', 'recent', 'search', 'settings', 'opensubtitles', 'player'];
+                     'favorites', 'recent', 'search', 'settings', 'opensubtitles', 'player', 'jogos'];
         for (var i = 0; i < names.length; i++) {
             var n = names[i];
             if (App.Views[n]) {
