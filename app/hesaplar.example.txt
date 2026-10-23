@@ -1,0 +1,6 @@
+# Copie para app/hesaplar.txt (não versionado). Uma conta por linha; "#" é comentário.
+# Xtream Codes:
+#   Nome | http://SERVIDOR:PORTA | USUARIO | SENHA
+# Lista M3U:
+#   m3u | Nome | http://.../lista.m3u
+Casa | http://SERVIDOR:PORTA | USUARIO | SENHA

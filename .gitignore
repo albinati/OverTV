@@ -1,0 +1,12 @@
+# Segredos: ficam só nesta máquina (faça backup à parte)
+certs/samsung/
+app/hesaplar.txt
+.env
+
+# Saídas de build / diagnóstico
+tools/tizen-cli/node_modules/
+.deploy/
+*.wgt
+app/.manifest.tmp
+tvlog.txt
+tvserver.err
